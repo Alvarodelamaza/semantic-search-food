@@ -2,12 +2,12 @@ from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 import json
 import matplotlib.pyplot as plt
-from PIL import Image
-import requests
-from io import BytesIO
+
 import openai
 from dotenv import load_dotenv
 import os 
+import faiss
+import numpy as np
 
 load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -18,7 +18,7 @@ client = openai.OpenAI(
     base_url=OPENAI_API_BASE
 )
 
-def generate_embeddings(texts, model="text-embedding-3-small", batch_size=10):
+def generate_embeddings(texts, model="text-embedding-3-large", batch_size=10):
     embeddings = []
     for i in range(0, len(texts), batch_size):
         batch = texts[i:i + batch_size]  
@@ -238,7 +238,7 @@ def enhanced_search(query, item_embeddings, items_df, top_k=10, apply_filter=Fal
     query_embedding = generate_embeddings([query])[0]
     
     # First stage: Semantic search to get candidate items
-    candidate_indices, _ = semantic_search(query_embedding, item_embeddings, top_k=30)
+    candidate_indices, _ = semantic_search(query_embedding, item_embeddings, top_k=50)
     
     # Optional filtering stage
     if apply_filter:
@@ -277,3 +277,93 @@ def tiered_search(query, item_embeddings, items_df, top_k=10):
     
     # Second tier: Only use LLM reranking for ambiguous results
     return rerank_with_llm(query, candidate_indices, items_df, top_k)
+
+
+
+def build_faiss_index(embeddings):
+    """
+    Build a FAISS index for fast vector similarity search.
+    
+    Args:
+        embeddings: List or array of embedding vectors
+    
+    Returns:
+        FAISS index
+    """
+    # Convert embeddings to a proper numpy array
+    if isinstance(embeddings, np.ndarray) and embeddings.dtype == object:
+        # If embeddings is a numpy array of Python lists
+        embeddings_list = [np.array(emb, dtype='float32') for emb in embeddings]
+        embeddings = np.vstack(embeddings_list)
+    elif isinstance(embeddings, list):
+        # If embeddings is a list of lists or numpy arrays
+        if all(isinstance(emb, list) for emb in embeddings):
+            embeddings = np.array(embeddings, dtype='float32')
+        elif all(isinstance(emb, np.ndarray) for emb in embeddings):
+            embeddings = np.vstack(embeddings).astype('float32')
+    
+   
+    embeddings = np.ascontiguousarray(embeddings, dtype='float32')
+    dimension = embeddings.shape[1]
+    
+    # Create index - using IndexFlatIP for inner product 
+    index = faiss.IndexFlatIP(dimension)
+    
+    #  normalization
+    norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
+    normalized_embeddings = embeddings / norms
+    normalized_embeddings = np.ascontiguousarray(normalized_embeddings, dtype='float32')
+    
+    index.add(normalized_embeddings)
+    
+    return index
+
+
+def faiss_search(query_embedding, faiss_index, top_k=30):
+    """
+    Search for similar items using FAISS index.
+    
+    Args:
+        query_embedding: Embedding vector of the query
+        faiss_index: FAISS index containing item embeddings
+        top_k: Number of top results to return
+    
+    Returns:
+        Tuple of (indices, distances)
+    """
+    # Convert to numpy 
+    if not isinstance(query_embedding, np.ndarray):
+        query_embedding = np.array(query_embedding).astype('float32')
+    
+    # Reshape 
+    if len(query_embedding.shape) == 1:
+        query_embedding = query_embedding.reshape(1, -1)
+    
+    # Normalize 
+    faiss.normalize_L2(query_embedding)
+    
+    # Search the index
+    distances, indices = faiss_index.search(query_embedding, top_k)
+    
+    return indices[0], distances[0]
+
+def enhanced_search_with_faiss(query, faiss_index, items_df, top_k=10, apply_filter=False, filter_criteria=None):
+    """
+    Complete search pipeline with FAISS for fast retrieval, optional filtering, and re-ranking.
+    """
+    # Generate query embedding
+    query_embedding = generate_embeddings([query])[0]
+    
+    # 1. Fast vector search with FAISS to get candidate items
+    candidate_indices, _ = faiss_search(query_embedding, faiss_index, top_k=50)
+    
+ 
+    
+    # If we have too few items
+    if len(candidate_indices) <= top_k:
+        return candidate_indices
+    
+    # 2. Re-ranking
+    reranked_indices = rerank_with_llm(query, candidate_indices, items_df, top_k)
+    
+    return reranked_indices

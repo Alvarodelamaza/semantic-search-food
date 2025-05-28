@@ -7,20 +7,19 @@ from PIL import Image
 from io import BytesIO
 import matplotlib.pyplot as plt
 from sklearn.metrics.pairwise import cosine_similarity
+import faiss
 
-from semantic_search import generate_embeddings, semantic_search, enhanced_search
+from semantic_search import generate_embeddings, enhanced_search, build_faiss_index, faiss_search, enhanced_search_with_faiss
 from utils import convert_embedding_string_to_array
 
 def create_search_ui():
-    st.set_page_config(page_title="🍔Semantic Search System🍕", layout="wide")
-    
-    st.title("🍔Semantic Search System🍕")
+    st.title("🛒 Semantic Item Search System")
     
     # Sidebar for search options
     st.sidebar.header("Search Options")
     search_type = st.sidebar.radio(
         "Select Search Method:",
-        ["Basic Semantic Search", "Enhanced Search (LLM Re-ranking)", "Filtered Search"]
+        ["Basic Semantic Search", "Enhanced Search (LLM Re-ranking)", "Filtered Search", "FAISS Search", "FAISS + LLM Re-ranking"]
     )
     
     top_k = st.sidebar.slider("Number of results to display", min_value=1, max_value=20, value=5)
@@ -30,7 +29,7 @@ def create_search_ui():
     
     # Additional options for filtered search
     filter_criteria = None
-    if search_type == "Filtered Search":
+    if search_type in ["Filtered Search", "FAISS + LLM Re-ranking"]:
         filter_criteria = st.text_input(
             "Enter filter criteria (e.g., 'Only vegetarian items', 'Price under R$30'):",
             ""
@@ -51,6 +50,7 @@ def create_search_ui():
             
             # Perform search based on selected method
             if search_type == "Basic Semantic Search":
+                from semantic_search import semantic_search
                 top_indices, top_scores = semantic_search(query_embedding, item_embeddings, top_k=top_k)
                 st.session_state.search_results = (top_indices, top_scores)
             
@@ -74,6 +74,26 @@ def create_search_ui():
                     items_df=items_df,
                     top_k=top_k,
                     apply_filter=True,
+                    filter_criteria=filter_criteria if filter_criteria else None
+                )
+                # Calculate scores for display purposes
+                similarities = cosine_similarity([query_embedding], item_embeddings)[0]
+                top_scores = similarities[top_indices]
+                st.session_state.search_results = (top_indices, top_scores)
+                
+            elif search_type == "FAISS Search":
+                # Use FAISS for fast retrieval
+                top_indices, top_scores = faiss_search(query_embedding, faiss_index, top_k=top_k)
+                st.session_state.search_results = (top_indices, top_scores)
+                
+            elif search_type == "FAISS + LLM Re-ranking":
+                # Use FAISS with LLM re-ranking
+                top_indices = enhanced_search_with_faiss(
+                    query=query,
+                    faiss_index=faiss_index,
+                    items_df=items_df,
+                    top_k=top_k,
+                    apply_filter=True if filter_criteria else False,
                     filter_criteria=filter_criteria if filter_criteria else None
                 )
                 # Calculate scores for display purposes
@@ -148,18 +168,19 @@ def display_item(idx, score, rank, items_df):
 
 # Add a function to run the app
 if __name__ == "__main__":
-    # You would need to load your data and models here
-    # items_df = ...
-    # item_embeddings = ...
+    # Load data and models
     queries = pd.read_csv("../data/queries.csv")
-
     test_queries = pd.read_csv("../data/test_queries.csv")
-    test_queries=list(test_queries['query'])
-
+    test_queries = list(test_queries['query'])
     items_df = pd.read_csv("../data/5k_items_processed.csv")
 
-
+    # Convert embeddings
     item_embeddings = np.array([convert_embedding_string_to_array(emb) for emb in items_df['embeddings_jointText']])
     item_embeddings_natural = np.array([convert_embedding_string_to_array(emb) for emb in items_df['embeddings_jointTextNatural']])
-
+    
+    # Build FAISS index (do this once at startup)
+    with st.spinner("Building FAISS index..."):
+        faiss_index = build_faiss_index(item_embeddings)
+        st.success("FAISS index built successfully!")
+    
     create_search_ui()
