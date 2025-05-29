@@ -29,7 +29,7 @@ Done by Alvaro de la Maza
    source venv/bin/activate
 
   
-   ```bash
+   
    # For Windows
    python -m venv venv
    venv\Scripts\activate
@@ -45,20 +45,20 @@ Done by Alvaro de la Maza
     There are two option to visualize the results
          
       #### Streamlit App
-         Navigate to the src directory and run:
+      Navigate to the src directory and run:
          ```bash
          cd src
          streamlit run search_app.py
       #### Jupyter Notebook UI
-         Go to the notebook ```data_exploration.ipynb
+      1. Go to the notebook data_exploration.ipynb
          Run all the cells to prepare the dataset
 
-         Go to the notebook ```bash evaluation.ipynb
+      2. Go to the notebook `evaluation.ipynb
          Run all the cells of the section Data loading and Run the first cell of Model Evaluations
 
-         Go to Display subsection and run the UI cell
+      3. Go to Display subsection and run the UI cell
 
-         Ready to start your search
+      4. Ready to start your search!
 
 
 ## Notebooks
