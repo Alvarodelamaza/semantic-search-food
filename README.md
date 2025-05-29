@@ -44,9 +44,10 @@ Done by Alvaro de la Maza
          
       ### Streamlit App
       Navigate to the `src` directory and run:
-      ``bash
-      cd src
-      streamlit run search_app.py
+      
+      `cd src`
+      
+      `streamlit run search_app.py`
         
       ### Jupyter Notebook UI
       1. Go to the notebook `data_exploration.ipynb`
