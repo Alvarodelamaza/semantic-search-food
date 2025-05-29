@@ -96,7 +96,7 @@ def rerank_with_llm(query, candidate_items, items_df, top_k=10):
     
     # Call the LLM with function calling
     response = client.chat.completions.create(
-        model="gpt-4.1-mini", 
+        model="gpt-4.1", 
         messages=messages,
         tools=tools,
         tool_choice={"type": "function", "function": {"name": "rank_items"}}
@@ -213,7 +213,7 @@ def filter_items_with_criteria(query, candidate_items, items_df, criteria=None):
         ]
         
         response = client.chat.completions.create(
-            model="gpt-4.1-mini",
+            model="gpt-4.1",
             messages=messages,
             tools=tools,
             tool_choice={"type": "function", "function": {"name": "filter_items"}}

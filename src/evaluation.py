@@ -1,6 +1,10 @@
 import numpy as np
 from typing import List, Dict
 
+import json
+import numpy as np
+from typing import List, Dict
+
 def evaluate_search_system(
     queries: List[str],
     search_results: List[List[int]],
@@ -29,13 +33,20 @@ def evaluate_search_system(
     
     for i, results in enumerate(search_results):
         true_id = i  # The true product ID for query i is i
-        if true_id in results:
-            rank = results.index(true_id) + 1
+        
+        # Convert NumPy array to list if necessary
+        if isinstance(results, np.ndarray):
+            results_list = results.tolist()
+        else:
+            results_list = results
+            
+        if true_id in results_list:
+            rank = results_list.index(true_id) + 1
             reciprocal_ranks.append(1.0 / rank)
             average_ranks.append(rank)
         else:
             reciprocal_ranks.append(0.0)
-            average_ranks.append(len(results) + 1)  # Assign a rank worse than the last result
+            average_ranks.append(len(results_list) + 1)  # Assign a rank worse than the last result
     
     metrics['mrr'] = np.mean(reciprocal_ranks)
     metrics['average_rank'] = np.mean(average_ranks)
@@ -46,7 +57,14 @@ def evaluate_search_system(
         hit_at_k = []
         for i, results in enumerate(search_results):
             true_id = i  # The true product ID for query i is i
-            hit_at_k.append(1.0 if true_id in results[:k] else 0.0)
+            
+            # Convert to list if it's a NumPy array
+            if isinstance(results, np.ndarray):
+                results_k = results[:k].tolist()
+            else:
+                results_k = results[:k]
+                
+            hit_at_k.append(1.0 if true_id in results_k else 0.0)
         
         metrics[f'hit_rate@{k}'] = np.mean(hit_at_k)
         
@@ -56,8 +74,15 @@ def evaluate_search_system(
         
         for i, results in enumerate(search_results):
             true_id = i  # The true product ID for query i is i
+            
+            # Convert to list if it's a NumPy array
+            if isinstance(results, np.ndarray):
+                results_k = results[:k].tolist()
+            else:
+                results_k = results[:k]
+                
             # For a single relevant item, precision@k = 1/k if item is in top k, 0 otherwise
-            if true_id in results[:k]:
+            if true_id in results_k:
                 precision_at_k.append(1.0 / k)
                 recall_at_k.append(1.0)  # Recall is 1 if the item is found, 0 otherwise
             else:

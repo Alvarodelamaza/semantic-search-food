@@ -2,7 +2,9 @@ import json
 import openai
 from dotenv import load_dotenv
 import os 
-
+import numpy as np
+from sklearn.metrics.pairwise import cosine_similarity
+from semantic_search import semantic_search
 load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENAI_API_BASE = os.getenv("OPENAI_API_BASE")
@@ -76,4 +78,22 @@ def preprocess_metadata(item_metadata, item_profile,type):
     
     return text
 
+def query_expansion(query_embedding,embeddings_query_gallery):
+    top_indices, top_scores = semantic_search(query_embedding, embeddings_query_gallery, top_k=15)
+    return top_indices.tolist()
 
+def semantic_search_expanded_query(query_embedding, item_embeddings, embeddings_query_gallery, top_k=300):
+    # Compute cosine similarity
+    indices=query_expansion(query_embedding,embeddings_query_gallery)
+    
+    reduced_gallery=[]
+    for idx in indices:
+        similarities = cosine_similarity([embeddings_query_gallery[idx]], item_embeddings)[0]
+        top_k_indices = np.argsort(similarities)[-top_k:][::-1]
+        reduced_gallery.extend(top_k_indices.tolist())
+    reduced_embeddings=[item_embeddings[i] for i in reduced_gallery]
+    similarities_2 = cosine_similarity([query_embedding], reduced_embeddings)[0]
+    
+    # Get top-k most similar items
+    top_k_indices = np.argsort(similarities_2)[-10:][::-1]
+    return top_k_indices, similarities_2[top_k_indices]

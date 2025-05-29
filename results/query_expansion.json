@@ -1,0 +1,16 @@
+{
+    "mrr": 0.6035575396825397,
+    "average_rank": 3.725,
+    "hit_rate@1": 0.5,
+    "precision@1": 0.5,
+    "recall@1": 0.5,
+    "hit_rate@3": 0.69,
+    "precision@3": 0.23,
+    "recall@3": 0.69,
+    "hit_rate@5": 0.75,
+    "precision@5": 0.15,
+    "recall@5": 0.75,
+    "hit_rate@10": 0.835,
+    "precision@10": 0.08349999999999999,
+    "recall@10": 0.835
+}
