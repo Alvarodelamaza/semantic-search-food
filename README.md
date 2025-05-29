@@ -46,3 +46,22 @@ Done by Alvaro de la Maza
    ```bash
    cd src
    streamlit run search_app.py
+
+## Notebooks
+
+   #### data_exploration.ipynb 
+   Contains all the initial EDA and the feature engineering necessry for next parts
+   #### evaluation.ipynb 
+   Contains all the evaluations of diffferent approaches, as well as metric calculations
+   #### generate_test_set.ipynb 
+   Contains thegeneration of the 200 queries test set
+
+## Files
+   #### evaluation.py 
+   Contains functions to calculate metrics
+   #### semantic_search.py 
+   Contains all the funtions to generate search with the different approaches
+   #### preprocess.py 
+   Contains functions to generate new features
+   #### utils.py 
+   Contains auxiliary functions 
