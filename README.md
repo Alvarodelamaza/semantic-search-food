@@ -28,8 +28,6 @@ Done by Alvaro de la Maza
    python -m venv venv
    source venv/bin/activate
 
-  
-   
    # For Windows
    python -m venv venv
    venv\Scripts\activate
@@ -46,9 +44,9 @@ Done by Alvaro de la Maza
          
       ### Streamlit App
       Navigate to the `src` directory and run:
-      
-      `cd src`
-      `streamlit run search_app.py`
+      ``bash
+      cd src
+      streamlit run search_app.py
         
       ### Jupyter Notebook UI
       1. Go to the notebook `data_exploration.ipynb`
