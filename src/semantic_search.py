@@ -79,7 +79,7 @@ def rerank_with_llm(query, candidate_items, items_df, top_k=10):
         }
     ]
     
-    # Create a prompt with item metadata to help the LLM reason
+    # prompt with item metadata to help the LLM reason
     items_context = []
     for idx in candidate_items:
         item_context = f"Item ID: {idx}\n Information: {items_df['jointText'][idx]} \n Total Orders: {items_df['total_orders'][idx]}"
@@ -88,13 +88,13 @@ def rerank_with_llm(query, candidate_items, items_df, top_k=10):
     
     items_text = "\n\n".join(items_context)
     
-    # Create the message for the LLM
+    # message for the LLM
     messages = [
         {"role": "system", "content": "You are a search ranking expert. Your task is to re-rank search results based on relevance to the query, considering factors like semantic match, popularity, and recency."},
         {"role": "user", "content": f"Query: {query}\n\nCandidate items:\n{items_text}\n\nPlease rank these items by relevance to the query. Consider both semantic relevance and other factors like popularity or recency when appropriate. Call the rank_items function with your ranking."}
     ]
     
-    # Call the LLM with function calling
+    # Call the LLM 
     response = client.chat.completions.create(
         model="gpt-4.1", 
         messages=messages,
@@ -189,14 +189,11 @@ def filter_items_with_criteria(query, candidate_items, items_df, criteria=None):
     batch_size = 20
     all_filtered_items = []
     
-    for i in range(0, len(candidate_items), batch_size):
-        batch_items = candidate_items[i:i + batch_size]
+    items_context = []
+    for idx in candidate_items:
+        item_context = f"Item ID: {idx}\n Information: {items_df['jointText'][idx]} \n Total Orders: {items_df['total_orders'][idx]}"
         
-        # Create context for current batch
-        items_context = []
-        for idx in batch_items:
-            item_context = f"Item ID: {idx}\n Information: {items_df['jointText'][idx]} \n Total Orders: {items_df['total_orders'][idx]}"
-            items_context.append(item_context)
+        items_context.append(item_context)
         
         items_text = "\n\n".join(items_context)
         

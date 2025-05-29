@@ -1,4 +1,4 @@
-from semantic_search import semantic_search
+
 import json
 import numpy as np
 import ast
@@ -6,28 +6,46 @@ import matplotlib.pyplot as plt
 from PIL import Image
 import requests
 from io import BytesIO
+import ipywidgets as widgets
+from semantic_search import semantic_search ,enhanced_search, generate_embeddings, cosine_similarity,  build_faiss_index, enhanced_search_with_faiss
+from IPython.display import display, clear_output
 
 
-def display_search_results(query, query_embedding, item_embeddings, items_df, top_k=5):
+def display_search_results(query, item_embeddings, items_df, top_k=5, search_method="Basic Semantic Search", filter_criteria=None):
     """
-    Display search results including item details and images.
+    Display search results including item details and images, with selectable search methodology.
     
     Args:
         query: The original search query text
-        query_embedding: The embedding vector of the query
         item_embeddings: A 2D array of item embedding vectors
         items_df: DataFrame containing item data
         top_k: Number of top results to display
+        search_method: The search methodology to use ("Basic Semantic Search", "Enhanced Search", "Filtered Search")
+        filter_criteria: Criteria for filtering items (used only for "Filtered Search")
     """
-    # Perform semantic search
-    top_indices, top_scores = semantic_search(query_embedding, item_embeddings, top_k=top_k)
+    # Generate query embedding
+    query_embedding = generate_embeddings([query])[0]
     
+    # Perform search based on selected methodology
+    if search_method == "Basic Semantic Search":
+        top_indices, top_scores = semantic_search(query_embedding, item_embeddings, top_k=top_k)
+    elif search_method == "Enhanced Search":
+        top_indices = enhanced_search(query, item_embeddings, items_df, top_k=top_k, apply_filter=False)
+        top_scores = cosine_similarity([query_embedding], item_embeddings)[0][top_indices]
+    elif search_method == "Filtered Search":
+        top_indices = enhanced_search(query, item_embeddings, items_df, top_k=top_k, apply_filter=True, filter_criteria=filter_criteria)
+        top_scores = cosine_similarity([query_embedding], item_embeddings)[0][top_indices]
+    else:
+        print("Invalid search method selected.")
+        return
+    
+    # Display results
     print(f"Search Query: '{query}'")
     print(f"Top {top_k} Results:")
     print("-" * 80)
     
     # Create a figure for displaying images
-    fig, axes = plt.subplots( top_k,1, figsize=(10, 30))
+    fig, axes = plt.subplots(top_k, 1, figsize=(10, 30))
     if top_k == 1:
         axes = [axes]  # Make axes iterable when top_k=1
     
@@ -80,6 +98,47 @@ def display_search_results(query, query_embedding, item_embeddings, items_df, to
     plt.show()
     
     return top_indices, top_scores
+
+# Interactive UI for Jupyter Notebook
+def search_ui(item_embeddings, items_df):
+    """
+    Create an interactive UI for searching in Jupyter Notebook, including filtering criteria.
+    """
+    query_input = widgets.Text(description="Query:")
+    search_method_dropdown = widgets.Dropdown(
+        options=["Basic Semantic Search", "Enhanced Search", "Filtered Search"],
+        description="Method:"
+    )
+    top_k_slider = widgets.IntSlider(value=5, min=1, max=20, step=1, description="Top K:")
+    filter_criteria_input = widgets.Text(description="Filter Criteria:")  # New widget for filtering criteria
+    search_button = widgets.Button(description="Search")
+    output = widgets.Output()
+
+    def on_search_button_clicked(b):
+        with output:
+            clear_output()
+            query = query_input.value
+            search_method = search_method_dropdown.value
+            top_k = top_k_slider.value
+            filter_criteria = filter_criteria_input.value  # Get the filter criteria input
+            if query:
+                if search_method == "Filtered Search" and not filter_criteria:
+                    print("Please enter filter criteria for the filtered search.")
+                else:
+                    display_search_results(
+                        query,
+                        item_embeddings,
+                        items_df,
+                        top_k=top_k,
+                        search_method=search_method,
+                        filter_criteria=filter_criteria if search_method == "Filtered Search" else None
+                    )
+            else:
+                print("Please enter a query.")
+
+    search_button.on_click(on_search_button_clicked)
+
+    display(widgets.VBox([query_input, search_method_dropdown, top_k_slider, filter_criteria_input, search_button, output]))
 
 def convert_embedding_string_to_array(embedding_str):
     # Remove any outer quotes if present
