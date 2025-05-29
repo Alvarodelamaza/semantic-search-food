@@ -44,16 +44,17 @@ Done by Alvaro de la Maza
 5. **Start the UI**
     There are two option to visualize the results
          
-      #### Streamlit App
-      Navigate to the src directory and run:
-         ```bash
-         cd src
-         streamlit run search_app.py
-      #### Jupyter Notebook UI
-      1. Go to the notebook data_exploration.ipynb
+      ### Streamlit App
+      Navigate to the `src` directory and run:
+      
+      cd src
+      streamlit run search_app.py
+        
+      ### Jupyter Notebook UI
+      1. Go to the notebook `data_exploration.ipynb`
          Run all the cells to prepare the dataset
 
-      2. Go to the notebook `evaluation.ipynb
+      2. Go to the notebook `evaluation.ipynb`
          Run all the cells of the section Data loading and Run the first cell of Model Evaluations
 
       3. Go to Display subsection and run the UI cell
