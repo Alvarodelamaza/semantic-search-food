@@ -3,17 +3,30 @@ import numpy as np
 import pandas as pd
 import json
 import requests
+import os
 from PIL import Image
 from io import BytesIO
 import matplotlib.pyplot as plt
 from sklearn.metrics.pairwise import cosine_similarity
 import faiss
+import sys
 
-from semantic_search import generate_embeddings, enhanced_search, build_faiss_index, faiss_search, enhanced_search_with_faiss
-from utils import convert_embedding_string_to_array
+# Add better error handling for imports
+try:
+    from semantic_search import generate_embeddings, enhanced_search, build_faiss_index, faiss_search, enhanced_search_with_faiss
+    from utils import convert_embedding_string_to_array
+except ImportError as e:
+    st.error(f"Failed to import required modules: {e}")
+    st.info("Make sure you're running the app from the correct directory and all dependencies are installed.")
+    st.stop()
 
 def create_search_ui():
     st.title("🛒 Semantic Item Search System")
+    
+    # Check if data is loaded
+    if 'data_loaded' not in st.session_state or not st.session_state.data_loaded:
+        st.warning("Data is still loading or failed to load. Please check the logs.")
+        return
     
     # Sidebar for search options
     st.sidebar.header("Search Options")
@@ -44,66 +57,70 @@ def create_search_ui():
     
     # Perform search when button is clicked
     if search_button and query:
-        with st.spinner("Searching..."):
-            # Generate query embedding
-            query_embedding = generate_embeddings([query])[0]
-            
-            # Perform search based on selected method
-            if search_type == "Basic Semantic Search":
-                from semantic_search import semantic_search
-                top_indices, top_scores = semantic_search(query_embedding, item_embeddings, top_k=top_k)
-                st.session_state.search_results = (top_indices, top_scores)
-            
-            elif search_type == "Enhanced Search (LLM Re-ranking)":
-                top_indices = enhanced_search(
-                    query=query,
-                    item_embeddings=item_embeddings,
-                    items_df=items_df,
-                    top_k=top_k,
-                    apply_filter=False
-                )
-                # Calculate scores for display purposes
-                similarities = cosine_similarity([query_embedding], item_embeddings)[0]
-                top_scores = similarities[top_indices]
-                st.session_state.search_results = (top_indices, top_scores)
-            
-            elif search_type == "Filtered Search":
-                top_indices = enhanced_search(
-                    query=query,
-                    item_embeddings=item_embeddings,
-                    items_df=items_df,
-                    top_k=top_k,
-                    apply_filter=True,
-                    filter_criteria=filter_criteria if filter_criteria else None
-                )
-                # Calculate scores for display purposes
-                similarities = cosine_similarity([query_embedding], item_embeddings)[0]
-                top_scores = similarities[top_indices]
-                st.session_state.search_results = (top_indices, top_scores)
+        try:
+            with st.spinner("Searching..."):
+                # Generate query embedding
+                query_embedding = generate_embeddings([query])[0]
                 
-            elif search_type == "FAISS Search":
-                # Use FAISS for fast retrieval
-                top_indices, top_scores = faiss_search(query_embedding, faiss_index, top_k=top_k)
-                st.session_state.search_results = (top_indices, top_scores)
+                # Perform search based on selected method
+                if search_type == "Basic Semantic Search":
+                    from semantic_search import semantic_search
+                    top_indices, top_scores = semantic_search(query_embedding, st.session_state.item_embeddings, top_k=top_k)
+                    st.session_state.search_results = (top_indices, top_scores)
                 
-            elif search_type == "FAISS + LLM Re-ranking":
-                # Use FAISS with LLM re-ranking
-                top_indices = enhanced_search_with_faiss(
-                    query=query,
-                    faiss_index=faiss_index,
-                    items_df=items_df,
-                    top_k=top_k,
-                    apply_filter=True if filter_criteria else False,
-                    filter_criteria=filter_criteria if filter_criteria else None
-                )
-                # Calculate scores for display purposes
-                similarities = cosine_similarity([query_embedding], item_embeddings)[0]
-                top_scores = similarities[top_indices]
-                st.session_state.search_results = (top_indices, top_scores)
+                elif search_type == "Enhanced Search (LLM Re-ranking)":
+                    top_indices = enhanced_search(
+                        query=query,
+                        item_embeddings=st.session_state.item_embeddings,
+                        items_df=st.session_state.items_df,
+                        top_k=top_k,
+                        apply_filter=False
+                    )
+                    # Calculate scores for display purposes
+                    similarities = cosine_similarity([query_embedding], st.session_state.item_embeddings)[0]
+                    top_scores = similarities[top_indices]
+                    st.session_state.search_results = (top_indices, top_scores)
+                
+                elif search_type == "Filtered Search":
+                    top_indices = enhanced_search(
+                        query=query,
+                        item_embeddings=st.session_state.item_embeddings,
+                        items_df=st.session_state.items_df,
+                        top_k=top_k,
+                        apply_filter=True,
+                        filter_criteria=filter_criteria if filter_criteria else None
+                    )
+                    # Calculate scores for display purposes
+                    similarities = cosine_similarity([query_embedding], st.session_state.item_embeddings)[0]
+                    top_scores = similarities[top_indices]
+                    st.session_state.search_results = (top_indices, top_scores)
+                    
+                elif search_type == "FAISS Search":
+                    # Use FAISS for fast retrieval
+                    top_indices, top_scores = faiss_search(query_embedding, st.session_state.faiss_index, top_k=top_k)
+                    st.session_state.search_results = (top_indices, top_scores)
+                    
+                elif search_type == "FAISS + LLM Re-ranking":
+                    # Use FAISS with LLM re-ranking
+                    top_indices = enhanced_search_with_faiss(
+                        query=query,
+                        faiss_index=st.session_state.faiss_index,
+                        items_df=st.session_state.items_df,
+                        top_k=top_k,
+                        apply_filter=True if filter_criteria else False,
+                        filter_criteria=filter_criteria if filter_criteria else None
+                    )
+                    # Calculate scores for display purposes
+                    similarities = cosine_similarity([query_embedding], st.session_state.item_embeddings)[0]
+                    top_scores = similarities[top_indices]
+                    st.session_state.search_results = (top_indices, top_scores)
+        except Exception as e:
+            st.error(f"Error during search: {e}")
+            return
     
     # Display results if available
     if st.session_state.search_results:
-        display_results(query, st.session_state.search_results[0], st.session_state.search_results[1], items_df)
+        display_results(query, st.session_state.search_results[0], st.session_state.search_results[1], st.session_state.items_df)
 
 def display_results(query, top_indices, top_scores, items_df):
     """Display search results in a user-friendly format"""
@@ -127,60 +144,138 @@ def display_results(query, top_indices, top_scores, items_df):
                     
 def display_item(idx, score, rank, items_df):
     """Display a single item in the results"""
-    row = items_df.iloc[idx]
-    
-    # Parse itemMetadata
-    item_meta = json.loads(row['itemMetadata'])
-    
-    # Extract item details
-    item_name = item_meta.get('name', 'Unknown Item')
-    item_description = item_meta.get('description', 'No description')
-    item_price = item_meta.get('price', 'Price not available')
-    item_category = item_meta.get('category_name', 'No category')
-    
-    # Create a card-like display
-    st.markdown(f"### {rank}. {item_name}")
-    
-    # Get image URL
-    images = item_meta.get('images', [])
-    if images:
-        image_str = images[0]
-        image_url = f"https://static.ifood-static.com.br/image/upload/t_low/pratos/{image_str}"
+    try:
+        row = items_df.iloc[idx]
         
-        # Try to display the image
+        # Parse itemMetadata
+        item_meta = json.loads(row['itemMetadata'])
+        
+        # Extract item details
+        item_name = item_meta.get('name', 'Unknown Item')
+        item_description = item_meta.get('description', 'No description')
+        item_price = item_meta.get('price', 'Price not available')
+        item_category = item_meta.get('category_name', 'No category')
+        
+        # Create a card-like display
+        st.markdown(f"### {rank}. {item_name}")
+        
+        # Get image URL
+        images = item_meta.get('images', [])
+        if images:
+            image_str = images[0]
+            image_url = f"https://static.ifood-static.com.br/image/upload/t_low/pratos/{image_str}"
+            
+            # Try to display the image
+            try:
+                response = requests.get(image_url)
+                img = Image.open(BytesIO(response.content))
+                st.image(img, use_container_width=True)
+            except Exception as e:
+                st.info(f"Image not available")
+        else:
+            st.info("No image available")
+        
+        # Display item details
+        st.markdown(f"**Description:** {item_description}")
+        st.markdown(f"**Price:** R${item_price:.2f}" if isinstance(item_price, (int, float)) else f"**Price:** {item_price}")
+        st.markdown(f"**Category:** {item_category}")
+        st.markdown(f"**Similarity Score:** {score:.4f}")
+        
+        # Add a separator
+        st.markdown("---")
+    except Exception as e:
+        st.error(f"Error displaying item {idx}: {e}")
+
+def load_data():
+    """Load all required data with proper error handling"""
+    st.session_state.data_loaded = False
+    
+    try:
+        # Display current working directory for debugging
+        st.sidebar.info(f"Current working directory: {os.getcwd()}")
+        
+        # Try to load data files
+        data_path = "../data"
+        
+        # Check if data directory exists
+        if not os.path.exists(data_path):
+            st.sidebar.error(f"Data directory not found: {data_path}")
+            st.sidebar.info("Please make sure you're running the app from the correct directory")
+            return False
+        
+        # Load queries
+        queries_path = os.path.join(data_path, "queries.csv")
+        if os.path.exists(queries_path):
+            st.session_state.queries = pd.read_csv(queries_path)
+            st.sidebar.success("Queries loaded successfully")
+        else:
+            st.sidebar.error(f"File not found: {queries_path}")
+            return False
+        
+        # Load test queries
+        test_queries_path = os.path.join(data_path, "test_queries.csv")
+        if os.path.exists(test_queries_path):
+            test_queries_df = pd.read_csv(test_queries_path)
+            st.session_state.test_queries = list(test_queries_df['query'])
+            st.sidebar.success("Test queries loaded successfully")
+        else:
+            st.sidebar.error(f"File not found: {test_queries_path}")
+            return False
+        
+        # Load items
+        items_path = os.path.join(data_path, "5k_items_processed.csv")
+        if os.path.exists(items_path):
+            st.session_state.items_df = pd.read_csv(items_path)
+            st.sidebar.success("Items loaded successfully")
+        else:
+            st.sidebar.error(f"File not found: {items_path}")
+            return False
+        
+        # Convert embeddings
         try:
-            response = requests.get(image_url)
-            img = Image.open(BytesIO(response.content))
-            st.image(img, use_container_width=True)
+            st.session_state.item_embeddings = np.array([
+                convert_embedding_string_to_array(emb) 
+                for emb in st.session_state.items_df['embeddings_jointText']
+            ])
+            st.session_state.item_embeddings_natural = np.array([
+                convert_embedding_string_to_array(emb) 
+                for emb in st.session_state.items_df['embeddings_jointTextNatural']
+            ])
+            st.sidebar.success("Embeddings converted successfully")
         except Exception as e:
-            st.error(f"Error loading image: {e}")
-    else:
-        st.info("No image available")
+            st.sidebar.error(f"Error converting embeddings: {e}")
+            return False
+        
+        # Build FAISS index
+        try:
+            with st.spinner("Building FAISS index..."):
+                st.session_state.faiss_index = build_faiss_index(st.session_state.item_embeddings)
+                st.sidebar.success("FAISS index built successfully!")
+        except Exception as e:
+            st.sidebar.error(f"Error building FAISS index: {e}")
+            return False
+        
+        st.session_state.data_loaded = True
+        return True
     
-    # Display item details
-    st.markdown(f"**Description:** {item_description}")
-    st.markdown(f"**Price:** R${item_price:.2f}" if isinstance(item_price, (int, float)) else f"**Price:** {item_price}")
-    st.markdown(f"**Category:** {item_category}")
-    st.markdown(f"**Similarity Score:** {score:.4f}")
-    
-    # Add a separator
-    st.markdown("---")
+    except Exception as e:
+        st.sidebar.error(f"Error loading data: {e}")
+        return False
 
 # Add a function to run the app
 if __name__ == "__main__":
-    # Load data and models
-    queries = pd.read_csv("../data/queries.csv")
-    test_queries = pd.read_csv("../data/test_queries.csv")
-    test_queries = list(test_queries['query'])
-    items_df = pd.read_csv("../data/5k_items_processed.csv")
-
-    # Convert embeddings
-    item_embeddings = np.array([convert_embedding_string_to_array(emb) for emb in items_df['embeddings_jointText']])
-    item_embeddings_natural = np.array([convert_embedding_string_to_array(emb) for emb in items_df['embeddings_jointTextNatural']])
+    st.set_page_config(
+        page_title="Semantic Item Search",
+        page_icon="🛒",
+        layout="wide"
+    )
     
-    # Build FAISS index (do this once at startup)
-    with st.spinner("Building FAISS index..."):
-        faiss_index = build_faiss_index(item_embeddings)
-        st.success("FAISS index built successfully!")
+    # Load data first
+    if 'data_loaded' not in st.session_state:
+        with st.spinner("Loading data and initializing models..."):
+            success = load_data()
+            if not success:
+                st.error("Failed to load data. Please check the logs in the sidebar.")
     
+    # Create the UI
     create_search_ui()

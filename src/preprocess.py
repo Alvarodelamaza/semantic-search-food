@@ -16,7 +16,7 @@ client = openai.OpenAI(
 
 
 
-def generate_test(texts, model="gpt-4.1-mini", batch_size=10):
+def generate_test(texts, model="gpt-4.1", batch_size=10):
     test_set = {}
     responses = []
     

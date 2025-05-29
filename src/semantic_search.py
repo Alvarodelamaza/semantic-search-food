@@ -185,8 +185,8 @@ def filter_items_with_criteria(query, candidate_items, items_df, criteria=None):
         }
     ]
     
-    # Process items in batches
-    batch_size = 20
+    
+    
     all_filtered_items = []
     
     items_context = []
