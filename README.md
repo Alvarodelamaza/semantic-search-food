@@ -41,11 +41,25 @@ Done by Alvaro de la Maza
 4. **Download the Dataset**
    Create a data directory and download the required data files into it**
 
-5. **Start the Streamlit App**
-   Navigate to the src directory and run:
-   ```bash
-   cd src
-   streamlit run search_app.py
+5. **Start the UI**
+    There are two option to visualize the results
+         
+      #### Streamlit App
+         Navigate to the src directory and run:
+         ```bash
+         cd src
+         streamlit run search_app.py
+      #### Jupyter Notebook UI
+         Go to the notebook ```data_exploration.ipynb
+         Run all the cells to prepare the dataset
+
+         Go to the notebook ```bash evaluation.ipynb
+         Run all the cells of the section Data loading and Run the first cell of Model Evaluations
+
+         Go to Display subsection and run the UI cell
+
+         Ready to start your search
+
 
 ## Notebooks
 
