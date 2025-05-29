@@ -47,17 +47,17 @@ Done by Alvaro de la Maza
       ### Streamlit App
       Navigate to the `src` directory and run:
       
-      cd src
-      streamlit run search_app.py
+      `cd src`
+      `streamlit run search_app.py`
         
       ### Jupyter Notebook UI
       1. Go to the notebook `data_exploration.ipynb`
          Run all the cells to prepare the dataset
 
       2. Go to the notebook `evaluation.ipynb`
-         Run all the cells of the section Data loading and Run the first cell of Model Evaluations
+         Run all the cells of the section Data loading and Run the first cell of *Model Evaluations*
 
-      3. Go to Display subsection and run the UI cell
+      3. Go to *Display subsection* and run the UI cell
 
       4. Ready to start your search!
 
